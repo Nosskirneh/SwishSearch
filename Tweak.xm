@@ -33,6 +33,7 @@
 
     self.textField.hidden = YES;
     self.searchTextField = [[UITextField alloc] initWithFrame:self.textField.frame];
+    self.searchTextField.autocorrectionType = UITextAutocorrectionTypeNo;
     self.searchTextField.delegate = self.textField.delegate;
     [self.searchTextField setDefaultTextAttributes:self.textField.defaultTextAttributes];
     [self.searchTextField addTarget:self.searchTextField.delegate 
@@ -135,7 +136,6 @@
 - (void)textFieldDidBeginEditing:(UITextField *)textField {
     %log;
     if (textField == self.payeeView.searchTextField) {
-        textField.autocorrectionType = UITextAutocorrectionTypeNo;
         self.payeeView.placeHolderLabel.hidden = YES;
         return;
     }
