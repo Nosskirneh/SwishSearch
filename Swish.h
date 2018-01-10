@@ -11,6 +11,10 @@
 @property (nonatomic, readwrite, assign) UITextField *textEdit;
 @end
 
+@interface KeyboardPanel : UIView
+- (void)addTextField:(UITextField *)textField;
+@end
+
 @interface PaymentsVC : UIViewController <UITableViewDelegate, UITableViewDataSource>
 @property (nonatomic, readwrite, assign) UIScrollView *scrollView;
 @property (nonatomic, readwrite, assign) NumberPaymentElement *payeeView;
@@ -18,6 +22,7 @@
 @property (nonatomic, assign) NSMutableArray *contacts;
 @property (nonatomic, assign) NSArray *suggestions;
 @property (nonatomic, assign) ContactsContainerView *contactsContainerView;
+- (KeyboardPanel *)getKeybPanel;
 
 - (void)loadContacts;
 - (void)getAllContactsWithStore:(CNContactStore *)store;

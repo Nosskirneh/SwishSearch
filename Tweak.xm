@@ -40,6 +40,7 @@
                              action:@selector(textFieldDidChange:) 
                    forControlEvents:UIControlEventEditingChanged];
     [self addSubview:self.searchTextField];
+    [[((PaymentsVC *)self.searchTextField.delegate) getKeybPanel] addTextField:self.searchTextField];
 }
 
 %new
@@ -66,6 +67,31 @@
     %orig;
 
     [self loadContacts];
+}
+
+- (BOOL)canGoPrev {
+    if ([self.payeeView.searchTextField isFirstResponder]) {
+        return NO;
+    }
+
+    return %orig;
+}
+
+- (void)KbdNext:(id)button {
+    if ([self.payeeView.searchTextField isFirstResponder]) {
+        [self.amountView.textEdit becomeFirstResponder];
+        return;
+    }
+    %orig;
+}
+
+- (void)KbdPrev:(id)button {
+    if ([self.amountView.textEdit isFirstResponder] && !self.payeeView.searchTextField.hidden) {
+        [self.payeeView.searchTextField becomeFirstResponder];
+        return;
+    }
+
+    %orig;
 }
 
 /* Contacts */
