@@ -134,7 +134,6 @@
 
 /* Text detection */
 - (void)textFieldDidBeginEditing:(UITextField *)textField {
-    %log;
     if (textField == self.payeeView.searchTextField) {
         self.payeeView.placeHolderLabel.hidden = YES;
         return;
@@ -143,7 +142,6 @@
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textField {
-    %log;
     if (textField == self.payeeView.searchTextField && textField.text.length == 0) {
         self.payeeView.placeHolderLabel.hidden = NO;
         return;
@@ -152,7 +150,6 @@
 }
 
 - (void)textFieldDidChange:(UITextField *)textField {
-    %log;
     if (textField == self.payeeView.searchTextField) {
         HBLogDebug(@"text: %@", textField.text);
         if (textField.text.length != 0) {
