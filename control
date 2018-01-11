@@ -1,9 +1,9 @@
-Package: se.nosskirneh.betterswishsearch
-Name: BetterSwishSearch
+Package: se.nosskirneh.swishsearch
+Name: SwishSearch
 Depends: mobilesubstrate
-Version: 0.0.1
+Version: 1.0
 Architecture: iphoneos-arm
-Description: An awesome MobileSubstrate tweak!
+Description: Search amongst contacts in Swish
 Maintainer: Andreas Henriksson
 Author: Andreas Henriksson
 Section: Tweaks

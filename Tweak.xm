@@ -369,7 +369,7 @@
 
 - (id)infoDictionary {
     NSMutableDictionary *info = [%orig mutableCopy];
-    info[@"NSContactsUsageDescription"] = @"Needed by BetterSwishSearch";
+    info[@"NSContactsUsageDescription"] = @"Needed by SwishSearch";
     return info;
 }
 
