@@ -97,15 +97,8 @@
 
 %hook PaymentsVC
 
-%property (nonatomic, assign) NSMutableArray *contacts;
 %property (nonatomic, assign) NSArray *suggestions;
 %property (nonatomic, assign) ContactsContainerView *contactsContainerView;
-
-- (void)viewDidLoad {
-    %orig;
-
-    [self loadContacts];
-}
 
 - (BOOL)canGoPrev {
     if ([self.payeeView.searchTextField isFirstResponder]) {
@@ -144,71 +137,6 @@
         [self.payeeView.searchTextField becomeFirstResponder];
         self.payeeView.searchTextField.hidden = NO;
         self.payeeView.textField.hidden = YES;
-    }
-}
-
-/* Contacts */
-%new
-- (void)loadContacts {
-    self.contacts = [NSMutableArray new];
-
-    CNEntityType entityType = CNEntityTypeContacts;
-    CNContactStore *store = [[CNContactStore alloc] init];
-    if ([CNContactStore authorizationStatusForEntityType:entityType] == CNAuthorizationStatusNotDetermined) {
-        [store requestAccessForEntityType:entityType completionHandler:^void(BOOL granted, NSError *_Nullable error) {
-            if (granted) {
-                [self getAllContactsWithStore:store];
-            }
-        }];
-    } else if ([CNContactStore authorizationStatusForEntityType:entityType] == CNAuthorizationStatusAuthorized) {
-        [self getAllContactsWithStore:store];
-    }
-}
-
-%new
-- (void)getAllContactsWithStore:(CNContactStore *)store {
-    NSArray *keys = @[CNContactFamilyNameKey, CNContactGivenNameKey, CNContactPhoneNumbersKey, CNContactImageDataKey];
-    CNContactFetchRequest *request = [[CNContactFetchRequest alloc] initWithKeysToFetch:keys];
-    NSError *error;
-    [store enumerateContactsWithFetchRequest:request error:&error usingBlock:^(CNContact *__nonnull contact, BOOL *__nonnull stop) {
-        if (error) {
-            HBLogError(@"error fetching contacts %@", error);
-        } else {
-            [self parseContactWithContact:contact];
-        }
-    }];
-}
-
-%new
-- (void)parseContactWithContact:(CNContact *)contact {
-    NSMutableDictionary *numbers = [NSMutableDictionary new];
-    for (CNLabeledValue *label in contact.phoneNumbers) {
-        NSString *digits = [label.value stringValue];
-        if (digits.length > 0) {
-            // Trim string
-            digits = [[digits stringByReplacingOccurrencesOfString:@"-" withString:@""] stringByReplacingOccurrencesOfString:@" " withString:@""];
-
-            // Only add valid numbers
-            if ((([digits hasPrefix:@"070"] && digits.length == 10) || // mobile
-                 ([digits hasPrefix:@"+46"] && digits.length == 12) || // mobile with country code
-                 ([digits hasPrefix:@"123"] && digits.length == 10) || // Swish registered number
-                 ([digits hasPrefix:@"90"] && digits.length == 7))) {  // Swish registered number
-                NSString *tag = [label localizedLabel];
-                numbers[digits] = tag ? tag : [NSNull null];
-            }
-        }
-    }
-    if (numbers.count == 0)
-        return;
-
-    for (NSString *number in numbers) {
-        NSMutableDictionary *dict = [NSMutableDictionary new];
-        dict[@"firstName"] = contact.givenName;
-        dict[@"lastName"] = contact.familyName;
-        dict[@"number"] = number;
-        dict[@"label"] = numbers[number];
-        dict[@"imageData"] = contact.imageData;
-        [self.contacts addObject:dict];
     }
 }
 
@@ -277,12 +205,15 @@
 
 %new
 - (void)updateSuggestionsFromText:(NSString *)text {
+    HBLogDebug(@"delegate: %@", ((CommerceAppDelegate *)[[UIApplication sharedApplication] delegate]));
+    NSMutableArray *contacts = ((CommerceAppDelegate *)[[UIApplication sharedApplication] delegate]).contacts;
+
     // Last name
     NSPredicate *predContains = [NSPredicate predicateWithFormat:@"lastName contains[c] %@", text];
-    NSMutableArray *lastNameFilteredContains = [[self.contacts filteredArrayUsingPredicate:predContains] mutableCopy];
+    NSMutableArray *lastNameFilteredContains = [[contacts filteredArrayUsingPredicate:predContains] mutableCopy];
 
     NSPredicate *predBegins = [NSPredicate predicateWithFormat:@"lastName BEGINSWITH %@", text];
-    NSArray *lastNamefilteredBegins = [self.contacts filteredArrayUsingPredicate:predBegins];
+    NSArray *lastNamefilteredBegins = [contacts filteredArrayUsingPredicate:predBegins];
 
     [lastNameFilteredContains removeObjectsInArray:lastNamefilteredBegins];
     NSIndexSet *indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [lastNamefilteredBegins count])];
@@ -290,10 +221,10 @@
 
     // First name
     predContains = [NSPredicate predicateWithFormat:@"firstName contains[c] %@", text];
-    NSMutableArray *firstNameFilteredContains = [[self.contacts filteredArrayUsingPredicate:predContains] mutableCopy];
+    NSMutableArray *firstNameFilteredContains = [[contacts filteredArrayUsingPredicate:predContains] mutableCopy];
 
     predBegins = [NSPredicate predicateWithFormat:@"firstName BEGINSWITH %@", text];
-    NSArray *firstNameFilteredBegins = [self.contacts filteredArrayUsingPredicate:predBegins];
+    NSArray *firstNameFilteredBegins = [contacts filteredArrayUsingPredicate:predBegins];
 
     [firstNameFilteredContains removeObjectsInArray:firstNameFilteredBegins];
     indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [firstNameFilteredBegins count])];
@@ -359,6 +290,86 @@
 %new
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     return tableView.estimatedRowHeight;
+}
+
+%end
+
+// Only load contacts once
+%hook CommerceAppDelegate
+
+%property (nonatomic, assign) NSMutableArray *contacts;
+
+- (BOOL)application:(id)app didFinishLaunchingWithOptions:(id)options {
+    %log;
+
+    [self loadContacts];
+
+    return %orig;
+}
+
+/* Contacts */
+%new
+- (void)loadContacts {
+    self.contacts = [NSMutableArray new];
+
+    CNEntityType entityType = CNEntityTypeContacts;
+    CNContactStore *store = [[CNContactStore alloc] init];
+    if ([CNContactStore authorizationStatusForEntityType:entityType] == CNAuthorizationStatusNotDetermined) {
+        [store requestAccessForEntityType:entityType completionHandler:^void(BOOL granted, NSError *_Nullable error) {
+            if (granted) {
+                [self getAllContactsWithStore:store];
+            }
+        }];
+    } else if ([CNContactStore authorizationStatusForEntityType:entityType] == CNAuthorizationStatusAuthorized) {
+        [self getAllContactsWithStore:store];
+    }
+}
+
+%new
+- (void)getAllContactsWithStore:(CNContactStore *)store {
+    NSArray *keys = @[CNContactFamilyNameKey, CNContactGivenNameKey, CNContactPhoneNumbersKey, CNContactImageDataKey];
+    CNContactFetchRequest *request = [[CNContactFetchRequest alloc] initWithKeysToFetch:keys];
+    NSError *error;
+    [store enumerateContactsWithFetchRequest:request error:&error usingBlock:^(CNContact *__nonnull contact, BOOL *__nonnull stop) {
+        if (error) {
+            HBLogError(@"error fetching contacts %@", error);
+        } else {
+            [self parseContactWithContact:contact];
+        }
+    }];
+}
+
+%new
+- (void)parseContactWithContact:(CNContact *)contact {
+    NSMutableDictionary *numbers = [NSMutableDictionary new];
+    for (CNLabeledValue *label in contact.phoneNumbers) {
+        NSString *digits = [label.value stringValue];
+        if (digits.length > 0) {
+            // Trim string
+            digits = [[digits stringByReplacingOccurrencesOfString:@"-" withString:@""] stringByReplacingOccurrencesOfString:@" " withString:@""];
+
+            // Only add valid numbers
+            if ((([digits hasPrefix:@"070"] && digits.length == 10) || // mobile
+                 ([digits hasPrefix:@"+46"] && digits.length == 12) || // mobile with country code
+                 ([digits hasPrefix:@"123"] && digits.length == 10) || // Swish registered number
+                 ([digits hasPrefix:@"90"] && digits.length == 7))) {  // Swish registered number
+                NSString *tag = [label localizedLabel];
+                numbers[digits] = tag ? tag : [NSNull null];
+            }
+        }
+    }
+    if (numbers.count == 0)
+        return;
+
+    for (NSString *number in numbers) {
+        NSMutableDictionary *dict = [NSMutableDictionary new];
+        dict[@"firstName"] = contact.givenName;
+        dict[@"lastName"] = contact.familyName;
+        dict[@"number"] = number;
+        dict[@"label"] = numbers[number];
+        dict[@"imageData"] = contact.imageData;
+        [self.contacts addObject:dict];
+    }
 }
 
 %end
