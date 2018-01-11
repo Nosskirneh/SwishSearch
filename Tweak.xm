@@ -56,6 +56,44 @@
 %end
 
 
+%hook KeyboardPanel
+
+%property (nonatomic, assign) UIButton *switchButton;
+
+- (void)layoutSubviews {
+    %log;
+    %orig;
+
+    if (!self.switchButton) {
+        // Create button
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        [button addTarget:self.delegate
+                   action:@selector(switchInput:)
+         forControlEvents:UIControlEventTouchUpInside];
+        button.titleLabel.font = [UIFont systemFontOfSize:12];
+        button.backgroundColor = UIColor.grayColor;
+        button.layer.cornerRadius = 8;
+        button.clipsToBounds = YES;
+        button.frame = CGRectMake(self.frame.size.width / 2 - 30 / 2,
+                                  self.frame.size.height / 2 - 30 / 2,
+                                  30.0,
+                                  30.0);
+        self.switchButton = button;
+        [self addSubview:button];
+
+        // Modify text / hidden state
+        if ([((PaymentsVC *)self.delegate).payeeView.searchTextField isFirstResponder]) {
+            HBLogDebug(@"isFirstResponder");
+            [self.switchButton setTitle:@"123" forState:UIControlStateNormal];
+            self.switchButton.hidden = NO;
+        } else {
+            self.switchButton.hidden = YES;   
+        }
+    }
+}
+
+%end
+
 
 %hook PaymentsVC
 
@@ -92,6 +130,21 @@
     }
 
     %orig;
+}
+
+%new
+- (void)switchInput:(UIButton *)sender {
+    [self.contactsContainerView removeFromSuperview];
+    if ([self.payeeView.searchTextField isFirstResponder]) {
+        [self.payeeView.textField becomeFirstResponder];
+        self.payeeView.searchTextField.hidden = YES;
+        self.payeeView.textField.hidden = NO;
+    }
+    else {
+        [self.payeeView.searchTextField becomeFirstResponder];
+        self.payeeView.searchTextField.hidden = NO;
+        self.payeeView.textField.hidden = YES;
+    }
 }
 
 /* Contacts */
@@ -162,8 +215,16 @@
 /* Text detection */
 - (void)textFieldDidBeginEditing:(UITextField *)textField {
     if (textField == self.payeeView.searchTextField) {
+        [self getKeybPanel].switchButton.hidden = NO;
+        [[self getKeybPanel].switchButton setTitle:@"123" forState:UIControlStateNormal];
         self.payeeView.placeHolderLabel.hidden = YES;
         return;
+    } else if (textField == self.payeeView.textField) {
+        [self getKeybPanel].switchButton.hidden = NO;
+        [[self getKeybPanel].switchButton setTitle:@"ABC" forState:UIControlStateNormal];
+        self.payeeView.placeHolderLabel.hidden = YES;
+    } else {
+        [self getKeybPanel].switchButton.hidden = YES;
     }
     %orig;
 }
@@ -205,6 +266,12 @@
         }
         return;
     }
+    %orig;
+}
+
+// Hide the switch button when selecting the message text view
+- (void)textViewDidBeginEditing:(UITextField *)textView {
+    [self getKeybPanel].switchButton.hidden = YES;
     %orig;
 }
 

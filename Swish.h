@@ -12,6 +12,8 @@
 @end
 
 @interface KeyboardPanel : UIView
+@property (nonatomic, assign) id delegate;
+@property (nonatomic, assign) UIButton *switchButton;
 - (void)addTextField:(UITextField *)textField;
 @end
 
