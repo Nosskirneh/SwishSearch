@@ -128,7 +128,7 @@
 
 %new
 - (void)parseContactWithContact:(CNContact *)contact {
-    NSMutableArray *numbers = [NSMutableArray new];
+    NSMutableDictionary *numbers = [NSMutableDictionary new];
     for (CNLabeledValue *label in contact.phoneNumbers) {
         NSString *digits = [label.value stringValue];
         if (digits.length > 0) {
@@ -140,19 +140,20 @@
                  ([digits hasPrefix:@"+46"] && digits.length == 12) || // mobile with country code
                  ([digits hasPrefix:@"123"] && digits.length == 10) || // Swish registered number
                  ([digits hasPrefix:@"90"] && digits.length == 7))) {  // Swish registered number
-                [numbers addObject:digits];
+                NSString *tag = [label localizedLabel];
+                numbers[digits] = tag ? tag : [NSNull null];
             }
         }
     }
-    if (numbers.count == 0) {
+    if (numbers.count == 0)
         return;
-    }
 
     for (NSString *number in numbers) {
         NSMutableDictionary *dict = [NSMutableDictionary new];
         dict[@"firstName"] = contact.givenName;
         dict[@"lastName"] = contact.familyName;
         dict[@"number"] = number;
+        dict[@"label"] = numbers[number];
         dict[@"imageData"] = contact.imageData;
         [self.contacts addObject:dict];
     }
@@ -251,7 +252,11 @@
 
     NSDictionary *contact = self.suggestions[indexPath.row];
     cell.textLabel.text = [NSString stringWithFormat:@"%@ %@", contact[@"firstName"], contact[@"lastName"]];
-    cell.detailTextLabel.text = contact[@"number"];
+    if (contact[@"label"] != [NSNull null])
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%@: %@", contact[@"label"], contact[@"number"]];
+    else
+        cell.detailTextLabel.text = contact[@"number"];
+
 
     [cell.imageView setFrame:CGRectMake(0, 0, 35, 35)];
     if (contact[@"imageData"]) {
@@ -269,7 +274,9 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-    self.payeeView.textField.text = self.suggestions[indexPath.row][@"number"];
+    NSDictionary *contact = self.suggestions[indexPath.row];
+    self.payeeView.searchTextField.text = [NSString stringWithFormat:@"%@ %@", contact[@"firstName"], contact[@"lastName"]];
+    self.payeeView.textField.text = contact[@"number"];
     self.payeeView.textField.hidden = NO;
     [self.contactsContainerView removeFromSuperview];
     self.payeeView.searchTextField.hidden = YES;

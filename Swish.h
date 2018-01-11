@@ -29,3 +29,9 @@
 - (void)parseContactWithContact:(CNContact *)contact;
 - (void)updateSuggestionsFromText:(NSString *)text;
 @end
+
+
+/* Contacts framework */
+@interface CNLabeledValue (Missing)
+- (NSString *)localizedLabel;
+@end
