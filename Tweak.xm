@@ -83,7 +83,6 @@
 
         // Modify text / hidden state
         if ([((PaymentsVC *)self.delegate).payeeView.searchTextField isFirstResponder]) {
-            HBLogDebug(@"isFirstResponder");
             [self.switchButton setTitle:@"123" forState:UIControlStateNormal];
             self.switchButton.hidden = NO;
         } else {
@@ -167,7 +166,6 @@
 
 - (void)textFieldDidChange:(UITextField *)textField {
     if (textField == self.payeeView.searchTextField) {
-        HBLogDebug(@"text: %@", textField.text);
         if (textField.text.length != 0) {
             // Search in contacts
             [self updateSuggestionsFromText:textField.text];
@@ -205,7 +203,6 @@
 
 %new
 - (void)updateSuggestionsFromText:(NSString *)text {
-    HBLogDebug(@"delegate: %@", ((CommerceAppDelegate *)[[UIApplication sharedApplication] delegate]));
     NSMutableArray *contacts = ((CommerceAppDelegate *)[[UIApplication sharedApplication] delegate]).contacts;
 
     // Last name
