@@ -2,6 +2,7 @@
 #import "ContactsContainerView.h"
 #import "UIImageView+Letters.h"
 #import "Swish.h"
+#import "SwishContact.h"
 
 
 @interface UIImage (Resize)
@@ -248,26 +249,28 @@
     static NSString *cellIdentifier = @"Cell";
 
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
-    if (cell == nil) {
+    if (cell == nil)
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"Standard"];
-    }
 
-    NSDictionary *contact = self.suggestions[indexPath.row];
-    cell.textLabel.text = [NSString stringWithFormat:@"%@ %@", contact[@"firstName"], contact[@"lastName"]];
-    if (contact[@"label"] != [NSNull null])
-        cell.detailTextLabel.text = [NSString stringWithFormat:@"%@: %@", contact[@"label"], contact[@"number"]];
+    SwishContact *contact = self.suggestions[indexPath.row];
+    cell.textLabel.text = [NSString stringWithFormat:@"%@ %@", contact.firstName, contact.lastName];
+    if (contact.label != (NSString *)[NSNull null])
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%@: %@", contact.label, contact.number];
     else
-        cell.detailTextLabel.text = contact[@"number"];
+        cell.detailTextLabel.text = contact.number;
 
 
     [cell.imageView setFrame:CGRectMake(0, 0, 35, 35)];
-    if (contact[@"imageData"]) {
-        UIImage *img = [UIImage imageWithData:contact[@"imageData"]];
+    if (contact.imageData) {
+        UIImage *img = [UIImage imageWithData:contact.imageData];
         cell.imageView.image = [UIImage imageWithImage:img scaledToSize:cell.imageView.frame.size];
         cell.imageView.layer.cornerRadius = cell.imageView.frame.size.width / 2;
         cell.imageView.layer.masksToBounds = YES;
     } else {
-        [cell.imageView setImageWithString:cell.textLabel.text color:nil circular:YES];
+        if (!contact.color)
+            contact.color = [cell.imageView randomColor];
+
+        [cell.imageView setImageWithString:cell.textLabel.text color:contact.color circular:YES];
     }
     return cell;
 }
@@ -276,9 +279,9 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-    NSDictionary *contact = self.suggestions[indexPath.row];
-    self.payeeView.searchTextField.text = [NSString stringWithFormat:@"%@ %@", contact[@"firstName"], contact[@"lastName"]];
-    self.payeeView.textField.text = contact[@"number"];
+    SwishContact *contact = self.suggestions[indexPath.row];
+    self.payeeView.searchTextField.text = [NSString stringWithFormat:@"%@ %@", contact.firstName, contact.lastName];
+    self.payeeView.textField.text = contact.number;
     self.payeeView.textField.hidden = NO;
     [self.contactsContainerView removeFromSuperview];
     self.payeeView.searchTextField.hidden = YES;
@@ -344,9 +347,9 @@
 }
 
 %new
-- (void)parseContactWithContact:(CNContact *)contact {
+- (void)parseContactWithContact:(CNContact *)_contact {
     NSMutableDictionary *numbers = [NSMutableDictionary new];
-    for (CNLabeledValue *label in contact.phoneNumbers) {
+    for (CNLabeledValue *label in _contact.phoneNumbers) {
         NSString *digits = [label.value stringValue];
         if (digits.length > 0) {
             // Trim string
@@ -366,13 +369,13 @@
         return;
 
     for (NSString *number in numbers) {
-        NSMutableDictionary *dict = [NSMutableDictionary new];
-        dict[@"firstName"] = contact.givenName;
-        dict[@"lastName"] = contact.familyName;
-        dict[@"number"] = number;
-        dict[@"label"] = numbers[number];
-        dict[@"imageData"] = contact.imageData;
-        [self.contacts addObject:dict];
+        SwishContact *contact = [[SwishContact alloc] init];
+        contact.firstName = _contact.givenName;
+        contact.lastName = _contact.familyName;
+        contact.number = number;
+        contact.label = numbers[number];
+        contact.imageData = _contact.imageData;
+        [self.contacts addObject:contact];
     }
 }
 

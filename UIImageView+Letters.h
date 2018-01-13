@@ -74,4 +74,6 @@
  */
 - (void)setImageWithString:(NSString *)string color:(UIColor *)color circular:(BOOL)isCircular textAttributes:(NSDictionary *)textAttributes;
 
+- (UIColor *)randomColor;
+
 @end
