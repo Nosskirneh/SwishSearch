@@ -353,11 +353,14 @@
         NSString *digits = [label.value stringValue];
         if (digits.length > 0) {
             // Trim string
-            digits = [[digits stringByReplacingOccurrencesOfString:@"-" withString:@""] stringByReplacingOccurrencesOfString:@" " withString:@""];
+            digits = [[[digits stringByReplacingOccurrencesOfString:@"-" withString:@""]
+                               stringByReplacingOccurrencesOfString:@" " withString:@""]
+                               stringByReplacingOccurrencesOfString:@" " withString:@""]; // Another type of space
+            HBLogDebug(@"%@ %@, %@: %@ (%ld)", _contact.givenName, _contact.familyName, [label localizedLabel], digits, (unsigned long) digits.length);
 
             // Only add valid numbers
-            if ((([digits hasPrefix:@"070"] && digits.length == 10) || // mobile
-                 ([digits hasPrefix:@"+46"] && digits.length == 12) || // mobile with country code
+            if ((([digits hasPrefix:@"07"] && digits.length == 10) || // mobile
+                 ([digits hasPrefix:@"+467"] && digits.length == 12) || // mobile with country code
                  ([digits hasPrefix:@"123"] && digits.length == 10) || // Swish registered number
                  ([digits hasPrefix:@"90"] && digits.length == 7))) {  // Swish registered number
                 NSString *tag = [label localizedLabel];
