@@ -99,6 +99,13 @@
 %property (nonatomic, assign) NSArray *suggestions;
 %property (nonatomic, assign) ContactsContainerView *contactsContainerView;
 
+// Only load contacts if we're going to make a payment
+- (void)viewDidLoad {
+    %orig;
+
+    [(CommerceAppDelegate *)[[UIApplication sharedApplication] delegate] loadContactsIfNecessary];
+}
+
 - (BOOL)canGoPrev {
     if ([self.payeeView.searchTextField isFirstResponder]) {
         return NO;
@@ -296,12 +303,12 @@
 
 %property (nonatomic, assign) NSMutableArray *contacts;
 
-- (BOOL)application:(id)app didFinishLaunchingWithOptions:(id)options {
-    %log;
+%new
+- (void)loadContactsIfNecessary {
+    if (self.contacts)
+        return;
 
     [self loadContacts];
-
-    return %orig;
 }
 
 /* Contacts */

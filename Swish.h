@@ -1,5 +1,6 @@
 @interface CommerceAppDelegate : NSObject
 @property (nonatomic, assign) NSMutableArray *contacts;
+- (void)loadContactsIfNecessary;
 - (void)loadContacts;
 - (void)getAllContactsWithStore:(CNContactStore *)store;
 - (void)parseContactWithContact:(CNContact *)contact;
