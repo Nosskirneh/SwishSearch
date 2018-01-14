@@ -210,6 +210,8 @@
     %orig;
 }
 
+// Search for matching contacts. Also overriding this method completely,
+// otherwise it will unhide the number placeholder label
 - (void)textFieldDidChange:(UITextField *)textField {
     if (textField == self.payeeView.searchTextField) {
         if (textField.text.length != 0) {
@@ -269,34 +271,17 @@
 - (void)updateSuggestionsFromText:(NSString *)text {
     NSMutableArray *contacts = ((CommerceAppDelegate *)[[UIApplication sharedApplication] delegate]).contacts;
 
-    // Last name
-    NSPredicate *predContains = [NSPredicate predicateWithFormat:@"lastName contains[c] %@", text];
-    NSMutableArray *lastNameFilteredContains = [[contacts filteredArrayUsingPredicate:predContains] mutableCopy];
+    NSPredicate *predContains = [NSPredicate predicateWithFormat:@"fullName contains[c] %@", text];
+    NSMutableArray *filteredContains = [[contacts filteredArrayUsingPredicate:predContains] mutableCopy];
 
-    NSPredicate *predBegins = [NSPredicate predicateWithFormat:@"lastName BEGINSWITH %@", text];
-    NSArray *lastNamefilteredBegins = [contacts filteredArrayUsingPredicate:predBegins];
+    NSPredicate *predBegins = [NSPredicate predicateWithFormat:@"fullName BEGINSWITH %@", text];
+    NSArray *filteredBegins = [contacts filteredArrayUsingPredicate:predBegins];
 
-    [lastNameFilteredContains removeObjectsInArray:lastNamefilteredBegins];
-    NSIndexSet *indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [lastNamefilteredBegins count])];
-    [lastNameFilteredContains insertObjects:lastNamefilteredBegins atIndexes:indexes];
+    [filteredContains removeObjectsInArray:filteredBegins];
+    NSIndexSet *indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [filteredBegins count])];
+    [filteredContains insertObjects:filteredBegins atIndexes:indexes];
 
-    // First name
-    predContains = [NSPredicate predicateWithFormat:@"firstName contains[c] %@", text];
-    NSMutableArray *firstNameFilteredContains = [[contacts filteredArrayUsingPredicate:predContains] mutableCopy];
-
-    predBegins = [NSPredicate predicateWithFormat:@"firstName BEGINSWITH %@", text];
-    NSArray *firstNameFilteredBegins = [contacts filteredArrayUsingPredicate:predBegins];
-
-    [firstNameFilteredContains removeObjectsInArray:firstNameFilteredBegins];
-    indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [firstNameFilteredBegins count])];
-    [firstNameFilteredContains insertObjects:firstNameFilteredBegins atIndexes:indexes];
-
-    // Concat first name and last name arrays
-    [lastNameFilteredContains removeObjectsInArray:firstNameFilteredContains];
-    indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [firstNameFilteredContains count])];
-    [lastNameFilteredContains insertObjects:firstNameFilteredContains atIndexes:indexes];
-
-    self.suggestions = lastNameFilteredContains;
+    self.suggestions = filteredContains;
 }
 
 /* Table View delegation methods */
@@ -309,7 +294,7 @@
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"Standard"];
 
     SwishContact *contact = self.suggestions[indexPath.row];
-    cell.textLabel.text = [NSString stringWithFormat:@"%@ %@", contact.firstName, contact.lastName];
+    cell.textLabel.text = [contact fullName];
     if (contact.label != (NSString *)[NSNull null])
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%@: %@", contact.label, contact.number];
     else
@@ -357,6 +342,7 @@
 
 %end
 
+/* Contacts */
 // Only load contacts once
 %hook CommerceAppDelegate
 
@@ -370,7 +356,6 @@
     [self loadContacts];
 }
 
-/* Contacts */
 %new
 - (void)loadContacts {
     self.contacts = [NSMutableArray new];
@@ -412,7 +397,6 @@
             digits = [[[digits stringByReplacingOccurrencesOfString:@"-" withString:@""]
                                stringByReplacingOccurrencesOfString:@" " withString:@""]
                                stringByReplacingOccurrencesOfString:@" " withString:@""]; // Another type of space
-            HBLogDebug(@"%@ %@, %@: %@ (%ld)", _contact.givenName, _contact.familyName, [label localizedLabel], digits, (unsigned long) digits.length);
 
             // Only add valid numbers
             if ((([digits hasPrefix:@"07"] && digits.length == 10) || // mobile

@@ -5,4 +5,5 @@
 @property (nonatomic, assign) NSString *label;
 @property (nonatomic, assign) NSData *imageData;
 @property (nonatomic, strong) UIColor *color;
+- (NSString *)fullName;
 @end
