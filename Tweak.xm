@@ -31,8 +31,6 @@
     if (self.searchTextField) {
         return;
     }
-
-    self.textField.hidden = YES;
     self.searchTextField = [[UITextField alloc] initWithFrame:self.textField.frame];
     self.searchTextField.autocorrectionType = UITextAutocorrectionTypeNo;
     self.searchTextField.delegate = self.textField.delegate;
@@ -42,6 +40,13 @@
                    forControlEvents:UIControlEventEditingChanged];
     [self addSubview:self.searchTextField];
     [[((PaymentsVC *)self.searchTextField.delegate) getKeybPanel] addTextField:self.searchTextField];
+
+
+    if (![self.textField hasText]) {
+        self.textField.hidden = YES;
+    } else {
+        self.searchTextField.hidden = YES;
+    }
 }
 
 %new
@@ -85,6 +90,9 @@
         // Modify text / hidden state
         if ([((PaymentsVC *)self.delegate).payeeView.searchTextField isFirstResponder]) {
             [self.switchButton setTitle:@"123" forState:UIControlStateNormal];
+            self.switchButton.hidden = NO;
+        } else if ([((PaymentsVC *)self.delegate).payeeView.textField isFirstResponder]) {
+            [self.switchButton setTitle:@"ABC" forState:UIControlStateNormal];
             self.switchButton.hidden = NO;
         } else {
             self.switchButton.hidden = YES;   
