@@ -99,6 +99,7 @@
 
 %property (nonatomic, assign) NSArray *suggestions;
 %property (nonatomic, assign) ContactsContainerView *contactsContainerView;
+%property (nonatomic, assign) UITextField *previousSelectedTextField;
 
 // Only load contacts if we're going to make a payment
 - (void)viewDidLoad {
@@ -108,7 +109,8 @@
 }
 
 - (BOOL)canGoPrev {
-    if ([self.payeeView.searchTextField isFirstResponder]) {
+    if ([self.payeeView.searchTextField isFirstResponder] ||
+        [self.payeeView.textField isFirstResponder]) {
         return NO;
     }
 
@@ -150,25 +152,45 @@
 /* Text detection */
 - (void)textFieldDidBeginEditing:(UITextField *)textField {
     if (textField == self.payeeView.searchTextField) {
-        [self getKeybPanel].switchButton.hidden = NO;
         [[self getKeybPanel].switchButton setTitle:@"123" forState:UIControlStateNormal];
-        self.payeeView.placeHolderLabel.hidden = YES;
+        [self updatePaymentTextField:textField];
         return;
     } else if (textField == self.payeeView.textField) {
-        [self getKeybPanel].switchButton.hidden = NO;
         [[self getKeybPanel].switchButton setTitle:@"ABC" forState:UIControlStateNormal];
-        self.payeeView.placeHolderLabel.hidden = YES;
+        [self updatePaymentTextField:textField];
+        return;
     } else {
+        if (self.previousSelectedTextField.text.length == 0)
+            [%c(JumpingLabels) performShowPlaceholderAnimationWithField:textField
+                                                       placeholderLabel:self.payeeView.placeHolderLabel
+                                                             titleLabel:self.payeeView.titleLabel
+                                                             completion:nil];
         [self getKeybPanel].switchButton.hidden = YES;
     }
     %orig;
 }
 
+%new
+- (void)updatePaymentTextField:(UITextField *)textField {
+    [self getKeybPanel].switchButton.hidden = NO;
+    self.payeeView.placeHolderLabel.hidden = YES;
+    if (self.previousSelectedTextField != self.payeeView.textField &&
+        self.previousSelectedTextField != self.payeeView.searchTextField &&
+        (self.payeeView.titleLabel.alpha == 0 || self.payeeView.titleLabel.hidden))
+        [%c(JumpingLabels) performDidBeginEditingAnimationWithField:textField
+                                                   placeholderLabel:self.payeeView.placeHolderLabel
+                                                         titleLabel:self.payeeView.titleLabel
+                                                         completion:nil];
+        [[self getKeybPanel] updateNextPrevButtons];
+}
+
 - (void)textFieldDidEndEditing:(UITextField *)textField {
-    if (textField == self.payeeView.searchTextField && textField.text.length == 0) {
-        self.payeeView.placeHolderLabel.hidden = NO;
+    self.previousSelectedTextField = textField;
+
+    // We're doing stuff manually in the next textFieldDidBegin instead
+    if (textField == self.payeeView.searchTextField || textField == self.payeeView.textField)
         return;
-    }
+
     %orig;
 }
 

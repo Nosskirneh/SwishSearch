@@ -7,6 +7,7 @@
 @end
 
 @interface NumberPaymentElement : UIView
+@property (nonatomic, assign) UILabel *titleLabel;
 @property (nonatomic, readwrite, assign) UITextField *textField;
 @property (nonatomic, assign) UITextField *searchTextField;
 @property (nonatomic, readwrite, assign) UILabel *placeHolderLabel;
@@ -23,6 +24,7 @@
 @property (nonatomic, assign) id delegate;
 @property (nonatomic, assign) UIButton *switchButton;
 - (void)addTextField:(UITextField *)textField;
+- (void)updateNextPrevButtons;
 @end
 
 @interface PaymentsVC : UIViewController <UITableViewDelegate, UITableViewDataSource>
@@ -31,8 +33,23 @@
 @property (nonatomic, readwrite, assign) AmountPaymentElement *amountView;
 @property (nonatomic, assign) NSArray *suggestions;
 @property (nonatomic, assign) ContactsContainerView *contactsContainerView;
+@property (nonatomic, assign) UITextField *previousSelectedTextField;
 - (KeyboardPanel *)getKeybPanel;
 - (void)updateSuggestionsFromText:(NSString *)text;
+- (void)updatePaymentTextField:(UITextField *)textField;
+@end
+
+@interface JumpingLabels : NSObject
+
++ (void)performDidBeginEditingAnimationWithField:(UITextField *)textField
+                                placeholderLabel:(UILabel *)placeholderLabel
+                                      titleLabel:(UILabel *)titleLabel
+                                      completion:(id)block;
++ (void)performShowPlaceholderAnimationWithField:(UITextField *)textField
+                                placeholderLabel:(UILabel *)placeholderLabel
+                                      titleLabel:(UILabel *)titleLabel
+                                      completion:(id)block;
+
 @end
 
 
