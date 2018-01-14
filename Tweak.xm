@@ -139,6 +139,7 @@
 - (void)KbdPrev:(id)button {
     if ([self.amountView.textEdit isFirstResponder] && !self.payeeView.searchTextField.hidden) {
         [self.payeeView.searchTextField becomeFirstResponder];
+        [self ScrollTo:self.payeeView.searchTextField];
         return;
     }
 
@@ -170,8 +171,9 @@
         [self updatePaymentTextField:textField];
         return;
     } else {
-        if (self.previousSelectedTextField.text.length == 0) {
-            self.payeeView.placeHolderLabel.hidden = NO;
+        if ((self.previousSelectedTextField == self.payeeView.searchTextField ||
+            self.previousSelectedTextField == self.payeeView.textField) &&
+            ![self.previousSelectedTextField hasText]) {
             [%c(JumpingLabels) performShowPlaceholderAnimationWithField:self.previousSelectedTextField
                                                        placeholderLabel:self.payeeView.placeHolderLabel
                                                              titleLabel:self.payeeView.titleLabel
@@ -241,7 +243,18 @@
 // Hide the switch button when selecting the message text view
 - (void)textViewDidBeginEditing:(UITextField *)textView {
     [self getKeybPanel].switchButton.hidden = YES;
+
+    if (![self.previousSelectedTextField hasText]) {
+        self.payeeView.placeHolderLabel.hidden = NO;
+    }
     %orig;
+}
+
+// Do not unhide the placeholder label when going back from the message view
+- (void)textViewDidEndEditing:(UITextField *)textView {
+    if (textView.text.length == 0) {
+        self.messageView.placeHolderLabel.hidden = NO;
+    }
 }
 
 // Prevent number placeholder label from being unhidden

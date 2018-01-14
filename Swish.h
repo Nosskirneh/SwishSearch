@@ -20,6 +20,10 @@
 @property (nonatomic, readwrite, assign) UITextField *textEdit;
 @end
 
+@interface MessagePaymentElement : UIView
+@property (nonatomic, readwrite, assign) UILabel *placeHolderLabel;
+@end
+
 @interface KeyboardPanel : UIView
 @property (nonatomic, assign) id delegate;
 @property (nonatomic, assign) UIButton *switchButton;
@@ -31,12 +35,14 @@
 @property (nonatomic, readwrite, assign) UIScrollView *scrollView;
 @property (nonatomic, readwrite, assign) NumberPaymentElement *payeeView;
 @property (nonatomic, readwrite, assign) AmountPaymentElement *amountView;
+@property (nonatomic, readwrite, assign) MessagePaymentElement *messageView;
 @property (nonatomic, assign) NSArray *suggestions;
 @property (nonatomic, assign) ContactsContainerView *contactsContainerView;
 @property (nonatomic, assign) UITextField *previousSelectedTextField;
 - (KeyboardPanel *)getKeybPanel;
 - (void)updateSuggestionsFromText:(NSString *)text;
 - (void)updatePaymentTextField:(UITextField *)textField;
+- (void)ScrollTo:(id)arg;
 @end
 
 @interface JumpingLabels : NSObject
