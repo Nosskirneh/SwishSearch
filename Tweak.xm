@@ -241,6 +241,7 @@
         return;
     } else {
         [[self getKeybPanel].doneBtn setEnabled:([self.amountView.textEdit hasText] &&
+                                                 !self.payeeView.textField.hidden &&
                                                  [self.payeeView.textField hasText])];
     }
 }
