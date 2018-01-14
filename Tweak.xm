@@ -136,7 +136,6 @@
 
 %new
 - (void)switchInput:(UIButton *)sender {
-    [self.contactsContainerView removeFromSuperview];
     if ([self.payeeView.searchTextField isFirstResponder]) {
         [self.payeeView.textField becomeFirstResponder];
         self.payeeView.searchTextField.hidden = YES;
@@ -188,8 +187,10 @@
     self.previousSelectedTextField = textField;
 
     // We're doing stuff manually in the next textFieldDidBegin instead
-    if (textField == self.payeeView.searchTextField || textField == self.payeeView.textField)
+    if (textField == self.payeeView.searchTextField || textField == self.payeeView.textField) {
+        [self.contactsContainerView removeFromSuperview];
         return;
+    }
 
     %orig;
 }
