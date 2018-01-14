@@ -21,6 +21,7 @@
 
 @end
 
+/* Add the search text field */
 %hook NumberPaymentElement
 
 %property (nonatomic, assign) UITextField *searchTextField;
@@ -61,7 +62,7 @@
 
 %end
 
-
+/* Add keyboard switch to the keyboard panel */
 %hook KeyboardPanel
 
 %property (nonatomic, assign) UIButton *switchButton;
@@ -160,6 +161,15 @@
 
     // Hidden states will be changed in layoutSubviews of the payeeView
     self.payeeView.searchTextField.text = name;
+}
+
+// Choosing a contact from the favorite list
+- (void)favoriteButtonAction:(id)favorite {
+    %orig;
+
+    self.payeeView.searchTextField.hidden = YES;
+    self.payeeView.textField.hidden = NO;
+    [self.payeeView.textField becomeFirstResponder];
 }
 
 %new
