@@ -65,7 +65,7 @@
     %log;
     %orig;
 
-    if (!self.switchButton) {
+    if ([self.delegate isKindOfClass:%c(PaymentsVC)] && !self.switchButton) {
         // Create button
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
         [button addTarget:self.delegate
