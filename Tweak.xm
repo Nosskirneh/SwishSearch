@@ -67,7 +67,6 @@
 %property (nonatomic, assign) UIButton *switchButton;
 
 - (void)layoutSubviews {
-    %log;
     %orig;
 
     if ([self.delegate isKindOfClass:%c(PaymentsVC)] && !self.switchButton) {
@@ -116,6 +115,7 @@
     [(CommerceAppDelegate *)[[UIApplication sharedApplication] delegate] loadContactsIfNecessary];
 }
 
+// Keyboard delegation methods
 - (BOOL)canGoPrev {
     if ([self.payeeView.searchTextField isFirstResponder] ||
         [self.payeeView.textField isFirstResponder]) {
@@ -154,6 +154,14 @@
     %orig;
 }
 
+// Manually fetching a contact (the old way)
+- (void)ContactPickerEnded:(BOOL)ended withNumber:(NSString *)number withName:(NSString *)name {
+    %orig;
+
+    // Hidden states will be changed in layoutSubviews of the payeeView
+    self.payeeView.searchTextField.text = name;
+}
+
 %new
 - (void)switchInput:(UIButton *)sender {
     if ([self.payeeView.searchTextField isFirstResponder]) {
@@ -189,6 +197,7 @@
         }
         [self getKeybPanel].switchButton.hidden = YES;
     }
+
     %orig;
 }
 
@@ -261,6 +270,7 @@
     if (![self.previousSelectedTextField hasText]) {
         self.payeeView.placeHolderLabel.hidden = NO;
     }
+
     %orig;
 }
 
