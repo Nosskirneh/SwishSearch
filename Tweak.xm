@@ -237,6 +237,9 @@
             [self.contactsContainerView removeFromSuperview];
         }
         return;
+    } else {
+        [[self getKeybPanel].doneBtn setEnabled:([self.amountView.textEdit hasText] &&
+                                                 [self.payeeView.textField hasText])];
     }
 }
 
