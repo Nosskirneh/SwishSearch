@@ -1,76 +1,57 @@
 #import <Contacts/Contacts.h>
 #import "ContactsContainerView.h"
-#import "UIImageView+Letters.h"
 #import "Swish.h"
 #import "SwishContact.h"
+#import "SwishContactTableViewCell.h"
 
 
-@interface UIImage (Resize)
-+ (UIImage *)imageWithImage:(UIImage *)image scaledToSize:(CGSize)newSize;
-@end
-
-@implementation UIImage (Resize)
-
-+ (UIImage *)imageWithImage:(UIImage *)image scaledToSize:(CGSize)newSize {
-    UIGraphicsBeginImageContextWithOptions(newSize, NO, 0.0);
-    [image drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
-    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();    
-    UIGraphicsEndImageContext();
-    return newImage;
-}
-
-@end
-
-/* Add the search text field */
-%hook NumberPaymentElement
-
-%property (nonatomic, assign) UITextField *searchTextField;
-
-- (void)layoutSubviews {
-    %orig;
-
-    if (self.searchTextField) {
-        return;
-    }
-    self.searchTextField = [[UITextField alloc] initWithFrame:self.textField.frame];
-    self.searchTextField.autocorrectionType = UITextAutocorrectionTypeNo;
-    self.searchTextField.delegate = self.textField.delegate;
-    [self.searchTextField setDefaultTextAttributes:self.textField.defaultTextAttributes];
-    [self.searchTextField addTarget:self.searchTextField.delegate 
-                             action:@selector(textFieldDidChange:) 
-                   forControlEvents:UIControlEventEditingChanged];
-    [self addSubview:self.searchTextField];
-    [[((PaymentsVC *)self.searchTextField.delegate) getKeybPanel] addTextField:self.searchTextField];
-
-
-    if (![self.textField hasText]) {
-        self.textField.hidden = YES;
-    } else {
-        self.searchTextField.hidden = YES;
-    }
-}
-
-%new
-- (UIView *)findSeparatorView {
-    for (UIView *view in self.subviews) {
-        if (view.frame.size.height == 1.0f) {
-            return view;
+UIView *findLastSeparatorViewInView(UIView *view) {
+    for (UIView *v in [view.subviews reverseObjectEnumerator]) {
+        if (v.frame.size.height == 1.0f) {
+            return v;
         }
     }
     return nil;
 }
 
-%end
+UITextField *createSearchTextField(UITextField *textField) {
+    UITextField *searchTextField = [[UITextField alloc] initWithFrame:textField.frame];
+    searchTextField.autocorrectionType = UITextAutocorrectionTypeNo;
+    searchTextField.delegate = textField.delegate;
+    [searchTextField setDefaultTextAttributes:textField.defaultTextAttributes];
+    [searchTextField addTarget:textField.delegate 
+                        action:@selector(textFieldDidChange:) 
+              forControlEvents:UIControlEventEditingChanged];
+    return searchTextField;
+}
+
+NSArray *updateSuggestionsFromText(NSString *text) {
+    NSMutableArray *contacts = ((CommerceAppDelegate *)[[UIApplication sharedApplication] delegate]).contacts;
+
+    NSPredicate *predContains = [NSPredicate predicateWithFormat:@"fullName contains[c] %@", text];
+    NSMutableArray *filteredContains = [[contacts filteredArrayUsingPredicate:predContains] mutableCopy];
+
+    NSPredicate *predBegins = [NSPredicate predicateWithFormat:@"fullName BEGINSWITH %@", text];
+    NSArray *filteredBegins = [contacts filteredArrayUsingPredicate:predBegins];
+
+    [filteredContains removeObjectsInArray:filteredBegins];
+    NSIndexSet *indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [filteredBegins count])];
+    [filteredContains insertObjects:filteredBegins atIndexes:indexes];
+
+    return filteredContains;
+}
 
 /* Add keyboard switch to the keyboard panel */
 %hook KeyboardPanel
 
 %property (nonatomic, assign) UIButton *switchButton;
+%property (nonatomic, assign) CGFloat keyboardHeight;
 
 - (void)layoutSubviews {
     %orig;
 
-    if ([self.delegate isKindOfClass:%c(PaymentsVC)] && !self.switchButton) {
+    if ([self.delegate respondsToSelector:@selector(searchTextField)] &&
+        !self.switchButton) {
         // Create button
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
         [button addTarget:self.delegate
@@ -88,15 +69,266 @@
         [self addSubview:button];
 
         // Modify text / hidden state
-        if ([((PaymentsVC *)self.delegate).payeeView.searchTextField isFirstResponder]) {
+        if ([[self.delegate searchTextField] isFirstResponder]) {
             [self.switchButton setTitle:@"123" forState:UIControlStateNormal];
             self.switchButton.hidden = NO;
-        } else if ([((PaymentsVC *)self.delegate).payeeView.textField isFirstResponder]) {
+        } else if ([[self.delegate standardTextField] isFirstResponder]) {
             [self.switchButton setTitle:@"ABC" forState:UIControlStateNormal];
             self.switchButton.hidden = NO;
         } else {
             self.switchButton.hidden = YES;   
         }
+    }
+}
+
+- (void)keyboardShown:(id)notification {
+    %orig;
+
+    NSDictionary *keyboardInfo = [notification userInfo];
+    NSValue *keyboardFrameBegin = [keyboardInfo valueForKey:UIKeyboardFrameBeginUserInfoKey];
+    self.keyboardHeight = [keyboardFrameBegin CGRectValue].size.height;
+}
+
+%end
+
+/* Add the search text fields */
+// Add new favorite
+%hook AddFavoriteViewController
+
+%property (nonatomic, assign) NSArray *suggestions;
+%property (nonatomic, assign) UITextField *searchTextField;
+%property (nonatomic, assign) UITextField *previousSelectedTextField;
+%property (nonatomic, assign) ContactsContainerView *contactsContainerView;
+
+- (void)viewDidLayoutSubviews {
+    %orig;
+
+    [(CommerceAppDelegate *)[[UIApplication sharedApplication] delegate] loadContactsIfNecessary];
+
+    if (self.searchTextField)
+        return;
+
+    self.searchTextField = createSearchTextField(self.phoneNumberTextField);
+    [self.scrollView addSubview:self.searchTextField];
+    [[self getKeybPanel] addTextField:self.searchTextField];
+
+    self.phoneNumberTextField.hidden = YES;
+}
+
+// Manually fetching a contact (the old way)
+- (void)ContactPickerEnded:(BOOL)ended withNumber:(NSString *)number withName:(NSString *)name {
+    %orig;
+
+    self.searchTextField.text = name;
+    self.searchTextField.hidden = YES;
+    self.phoneNumberTextField.hidden = NO;
+}
+
+%new
+- (void)switchInput:(UIButton *)sender {
+    if ([self.searchTextField isFirstResponder]) {
+        [self.phoneNumberTextField becomeFirstResponder];
+        self.searchTextField.hidden = YES;
+        self.phoneNumberTextField.hidden = NO;
+    } else {
+        [self.searchTextField becomeFirstResponder];
+        self.searchTextField.hidden = NO;
+        self.phoneNumberTextField.hidden = YES;
+    }
+}
+
+%new
+- (UITextField *)standardTextField {
+    return self.phoneNumberTextField;
+}
+
+// Keyboard delegation methods
+- (BOOL)canGoPrev {
+    if ([self.searchTextField isFirstResponder] ||
+        [self.phoneNumberTextField isFirstResponder]) {
+        return YES;
+    }
+
+    return %orig;
+}
+
+- (BOOL)canGoNext {
+    if ([self.searchTextField isFirstResponder] ||
+        [self.phoneNumberTextField isFirstResponder]) {
+        return NO;
+    }
+
+    return %orig;
+}
+
+- (void)KbdPrev:(id)button {
+    [self.nameTextField becomeFirstResponder];
+}
+
+- (void)KbdNext:(id)button {
+    if (self.searchTextField.hidden) {
+        [self.phoneNumberTextField becomeFirstResponder];
+    } else {
+        [self.searchTextField becomeFirstResponder];
+    }
+}
+
+/* Text detection */
+- (void)textFieldDidBeginEditing:(UITextField *)textField {
+    %log;
+    if (textField == self.searchTextField) {
+        [[self getKeybPanel].switchButton setTitle:@"123" forState:UIControlStateNormal];
+        [self updateNumberTextField:textField];
+        return;
+    } else if (textField == self.phoneNumberTextField) {
+        [[self getKeybPanel].switchButton setTitle:@"ABC" forState:UIControlStateNormal];
+        [self updateNumberTextField:textField];
+        return;
+    } else {
+        if ((self.previousSelectedTextField == self.searchTextField ||
+             self.previousSelectedTextField == self.phoneNumberTextField) &&
+            ![self.previousSelectedTextField hasText]) {
+            [%c(JumpingLabels) performShowPlaceholderAnimationWithField:self.previousSelectedTextField
+                                                       placeholderLabel:self.phoneNumberPlaceholder
+                                                             titleLabel:self.phoneNumberTitle
+                                                             completion:nil];
+        }
+        [self getKeybPanel].switchButton.hidden = YES;
+    }
+
+    %orig;
+}
+
+%new
+- (void)updateNumberTextField:(UITextField *)textField {
+    [self getKeybPanel].switchButton.hidden = NO;
+    [[self getKeybPanel] updateNextPrevButtons];
+    self.phoneNumberPlaceholder.hidden = YES;
+    if (self.previousSelectedTextField != self.phoneNumberTextField &&
+        self.previousSelectedTextField != self.searchTextField &&
+        (self.phoneNumberTitle.alpha == 0 || self.phoneNumberTitle.hidden))
+        [%c(JumpingLabels) performDidBeginEditingAnimationWithField:textField
+                                                   placeholderLabel:self.phoneNumberPlaceholder
+                                                         titleLabel:self.phoneNumberTitle
+                                                         completion:nil];
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField {
+    self.previousSelectedTextField = textField;
+
+    // We're doing stuff manually in the next textFieldDidBegin instead
+    if (textField == self.searchTextField || textField == self.phoneNumberTextField) {
+        [self.contactsContainerView removeFromSuperview];
+        return;
+    }
+
+    %orig;
+}
+
+// Search for matching contacts
+- (void)textFieldDidChange:(UITextField *)textField {
+    %log;
+    if (textField == self.searchTextField) {
+        if ([textField hasText]) {
+            // Search in contacts
+            self.suggestions = updateSuggestionsFromText(textField.text);
+            if (self.suggestions.count == 0) {
+                [self.contactsContainerView removeFromSuperview];
+                return;
+            }
+
+            // Present table view
+            if (!self.contactsContainerView) {
+                UIView *separator = findLastSeparatorViewInView(self.contentView);
+
+                CGRect frame = CGRectMake(separator.frame.origin.x,
+                                          separator.frame.origin.y,
+                                          separator.frame.size.width,
+                                          0);
+                self.contactsContainerView = [[ContactsContainerView alloc] initWithFrame:frame delegate:self];
+            }
+
+            float maxHeight = self.scrollView.frame.size.height - [self getKeybPanel].keyboardHeight - self.contactsContainerView.frame.origin.y;
+            [self.contactsContainerView setNumberOfSuggestions:self.suggestions.count maxHeight:maxHeight];
+            [self.scrollView addSubview:self.contactsContainerView];
+        } else {
+            [self.contactsContainerView removeFromSuperview];
+        }
+        return;
+    } else {
+        [[self getKeybPanel].doneBtn setEnabled:([self.nameTextField hasText] &&
+                                                 !self.phoneNumberTextField.hidden &&
+                                                 [self.phoneNumberTextField hasText])];
+    }
+}
+
+/* Table View delegation methods */
+%new
+- (SwishContactTableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    static NSString *cellIdentifier = @"Cell";
+
+    SwishContactTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
+    if (cell == nil) {
+        cell = [[SwishContactTableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cellIdentifier];
+    }
+
+    SwishContact *contact = self.suggestions[indexPath.row];
+    [cell configureWithContact:contact];
+
+    return cell;
+}
+
+%new
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+
+    SwishContact *contact = self.suggestions[indexPath.row];
+    self.searchTextField.text = [NSString stringWithFormat:@"%@ %@", contact.firstName, contact.lastName];
+    self.phoneNumberTextField.text = contact.number;
+    self.phoneNumberTextField.hidden = NO;
+    [self.contactsContainerView removeFromSuperview];
+    self.searchTextField.hidden = YES;
+
+    [self.phoneNumberTextField becomeFirstResponder];
+
+    [[self getKeybPanel].doneBtn setEnabled:([self.nameTextField hasText] &&
+                                             !self.phoneNumberTextField.hidden &&
+                                             [self.phoneNumberTextField hasText])];
+}
+
+%new
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return self.suggestions.count;
+}
+
+%new
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    return tableView.estimatedRowHeight;
+}
+
+%end
+
+
+// Normal payment
+%hook NumberPaymentElement
+
+%property (nonatomic, assign) UITextField *searchTextField;
+
+- (void)layoutSubviews {
+    %orig;
+
+    if (self.searchTextField) {
+        return;
+    }
+
+    self.searchTextField = createSearchTextField(self.textField);
+    [[((PaymentsVC *)self.searchTextField.delegate) getKeybPanel] addTextField:self.searchTextField];
+    [self addSubview:self.searchTextField];
+
+    if (![self.textField hasText]) {
+        self.textField.hidden = YES;
+    } else {
+        self.searchTextField.hidden = YES;
     }
 }
 
@@ -114,6 +346,16 @@
     %orig;
 
     [(CommerceAppDelegate *)[[UIApplication sharedApplication] delegate] loadContactsIfNecessary];
+}
+
+%new
+- (UITextField *)searchTextField {
+    return self.payeeView.searchTextField;
+}
+
+%new
+- (UITextField *)standardTextField {
+    return self.payeeView.textField;
 }
 
 // Keyboard delegation methods
@@ -178,8 +420,7 @@
         [self.payeeView.textField becomeFirstResponder];
         self.payeeView.searchTextField.hidden = YES;
         self.payeeView.textField.hidden = NO;
-    }
-    else {
+    } else {
         [self.payeeView.searchTextField becomeFirstResponder];
         self.payeeView.searchTextField.hidden = NO;
         self.payeeView.textField.hidden = YES;
@@ -241,9 +482,9 @@
 // otherwise it will unhide the number placeholder label
 - (void)textFieldDidChange:(UITextField *)textField {
     if (textField == self.payeeView.searchTextField) {
-        if (textField.text.length != 0) {
+        if ([textField hasText]) {
             // Search in contacts
-            [self updateSuggestionsFromText:textField.text];
+            self.suggestions = updateSuggestionsFromText(textField.text);
             if (self.suggestions.count == 0) {
                 [self.contactsContainerView removeFromSuperview];
                 return;
@@ -251,7 +492,7 @@
 
             // Present table view
             if (!self.contactsContainerView) {
-                UIView *separator = [self.payeeView findSeparatorView];
+                UIView *separator = findLastSeparatorViewInView(self.payeeView);
 
                 CGRect frame = CGRectMake(separator.frame.origin.x,
                                           separator.frame.origin.y,
@@ -260,7 +501,8 @@
                 self.contactsContainerView = [[ContactsContainerView alloc] initWithFrame:frame delegate:self];
             }
 
-            [self.contactsContainerView setNumberOfSuggestions:self.suggestions.count];
+            float maxHeight = self.scrollView.frame.size.height - [self getKeybPanel].keyboardHeight - self.contactsContainerView.frame.origin.y;
+            [self.contactsContainerView setNumberOfSuggestions:self.suggestions.count maxHeight:maxHeight];
             [self.scrollView addSubview:self.contactsContainerView];
         } else {
             [self.contactsContainerView removeFromSuperview];
@@ -296,52 +538,19 @@
     return;
 }
 
-%new
-- (void)updateSuggestionsFromText:(NSString *)text {
-    NSMutableArray *contacts = ((CommerceAppDelegate *)[[UIApplication sharedApplication] delegate]).contacts;
-
-    NSPredicate *predContains = [NSPredicate predicateWithFormat:@"fullName contains[c] %@", text];
-    NSMutableArray *filteredContains = [[contacts filteredArrayUsingPredicate:predContains] mutableCopy];
-
-    NSPredicate *predBegins = [NSPredicate predicateWithFormat:@"fullName BEGINSWITH %@", text];
-    NSArray *filteredBegins = [contacts filteredArrayUsingPredicate:predBegins];
-
-    [filteredContains removeObjectsInArray:filteredBegins];
-    NSIndexSet *indexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, [filteredBegins count])];
-    [filteredContains insertObjects:filteredBegins atIndexes:indexes];
-
-    self.suggestions = filteredContains;
-}
-
 /* Table View delegation methods */
 %new
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+- (SwishContactTableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     static NSString *cellIdentifier = @"Cell";
 
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
-    if (cell == nil)
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"Standard"];
+    SwishContactTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
+    if (cell == nil) {
+        cell = [[SwishContactTableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cellIdentifier];
+    }
 
     SwishContact *contact = self.suggestions[indexPath.row];
-    cell.textLabel.text = [contact fullName];
-    if (contact.label != (NSString *)[NSNull null])
-        cell.detailTextLabel.text = [NSString stringWithFormat:@"%@: %@", contact.label, contact.number];
-    else
-        cell.detailTextLabel.text = contact.number;
+    [cell configureWithContact:contact];
 
-
-    [cell.imageView setFrame:CGRectMake(0, 0, 35, 35)];
-    if (contact.imageData) {
-        UIImage *img = [UIImage imageWithData:contact.imageData];
-        cell.imageView.image = [UIImage imageWithImage:img scaledToSize:cell.imageView.frame.size];
-        cell.imageView.layer.cornerRadius = cell.imageView.frame.size.width / 2;
-        cell.imageView.layer.masksToBounds = YES;
-    } else {
-        if (!contact.color)
-            contact.color = [cell.imageView randomColor];
-
-        [cell.imageView setImageWithString:cell.textLabel.text color:contact.color circular:YES];
-    }
     return cell;
 }
 
@@ -357,6 +566,10 @@
     self.payeeView.searchTextField.hidden = YES;
 
     [self.amountView.textEdit becomeFirstResponder];
+
+    [[self getKeybPanel].doneBtn setEnabled:([self.amountView.textEdit hasText] &&
+                                             !self.payeeView.textField.hidden &&
+                                             [self.payeeView.textField hasText])];
 }
 
 %new

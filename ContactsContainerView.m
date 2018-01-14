@@ -1,4 +1,5 @@
 #import "ContactsContainerView.h"
+#import "SwishContactTableViewCell.h"
 
 @implementation ContactsContainerView
 
@@ -47,11 +48,11 @@
 
     // Set the mask of the view.
     self.layer.mask = maskLayer;
-
 }
 
-- (void)setNumberOfSuggestions:(NSUInteger)count {
-    int height = MIN(count * self.tableView.estimatedRowHeight, self.tableView.estimatedRowHeight * 4);
+- (void)setNumberOfSuggestions:(NSUInteger)count maxHeight:(CGFloat)maxHeight {
+    int height = MIN(count * self.tableView.estimatedRowHeight,
+                     floor(maxHeight / self.tableView.estimatedRowHeight) * self.tableView.estimatedRowHeight);
     [self setHeight:height];
     [self.tableView reloadData];
 }
