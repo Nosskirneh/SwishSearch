@@ -117,11 +117,22 @@
     return %orig;
 }
 
+- (BOOL)canGoNext {
+    if ([self.payeeView.searchTextField isFirstResponder] ||
+        [self.payeeView.textField isFirstResponder]) {
+        return YES;
+    }
+
+    return %orig;
+}
+
 - (void)KbdNext:(id)button {
-    if ([self.payeeView.searchTextField isFirstResponder]) {
+    if ([self.payeeView.searchTextField isFirstResponder] ||
+        [self.payeeView.textField isFirstResponder]) {
         [self.amountView.textEdit becomeFirstResponder];
         return;
     }
+
     %orig;
 }
 
@@ -159,11 +170,13 @@
         [self updatePaymentTextField:textField];
         return;
     } else {
-        if (self.previousSelectedTextField.text.length == 0)
-            [%c(JumpingLabels) performShowPlaceholderAnimationWithField:textField
+        if (self.previousSelectedTextField.text.length == 0) {
+            self.payeeView.placeHolderLabel.hidden = NO;
+            [%c(JumpingLabels) performShowPlaceholderAnimationWithField:self.previousSelectedTextField
                                                        placeholderLabel:self.payeeView.placeHolderLabel
                                                              titleLabel:self.payeeView.titleLabel
                                                              completion:nil];
+        }
         [self getKeybPanel].switchButton.hidden = YES;
     }
     %orig;
@@ -172,6 +185,7 @@
 %new
 - (void)updatePaymentTextField:(UITextField *)textField {
     [self getKeybPanel].switchButton.hidden = NO;
+    [[self getKeybPanel] updateNextPrevButtons];
     self.payeeView.placeHolderLabel.hidden = YES;
     if (self.previousSelectedTextField != self.payeeView.textField &&
         self.previousSelectedTextField != self.payeeView.searchTextField &&
@@ -180,7 +194,6 @@
                                                    placeholderLabel:self.payeeView.placeHolderLabel
                                                          titleLabel:self.payeeView.titleLabel
                                                          completion:nil];
-        [[self getKeybPanel] updateNextPrevButtons];
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textField {
@@ -223,13 +236,17 @@
         }
         return;
     }
-    %orig;
 }
 
 // Hide the switch button when selecting the message text view
 - (void)textViewDidBeginEditing:(UITextField *)textView {
     [self getKeybPanel].switchButton.hidden = YES;
     %orig;
+}
+
+// Prevent number placeholder label from being unhidden
+- (void)textViewDidChange:(UITextField *)textView {
+    return;
 }
 
 %new
