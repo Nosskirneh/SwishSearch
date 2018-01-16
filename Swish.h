@@ -39,10 +39,12 @@
 
 @interface AddFavoriteViewController : UIViewController <KeyboardPanelContactsDelegate>
 @property (nonatomic, readwrite, assign) UIScrollView *scrollView;
+@property (nonatomic, assign) UILabel *nameTitle;
+@property (nonatomic, assign) UILabel *namePlaceholder;
 @property (nonatomic, assign) UITextField *nameTextField;
-@property (nonatomic, assign) UITextField *phoneNumberTextField;
 @property (nonatomic, assign) UILabel *phoneNumberTitle;
 @property (nonatomic, readwrite, assign) UILabel *phoneNumberPlaceholder;
+@property (nonatomic, assign) UITextField *phoneNumberTextField;
 @property (nonatomic, assign) UIView *contentView;
 @property (nonatomic, assign) NSArray *suggestions;
 @property (nonatomic, assign) UITextField *searchTextField;

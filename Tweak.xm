@@ -283,7 +283,16 @@ NSArray *updateSuggestionsFromText(NSString *text) {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
     SwishContact *contact = self.suggestions[indexPath.row];
-    self.searchTextField.text = [NSString stringWithFormat:@"%@ %@", contact.firstName, contact.lastName];
+    if (![self.nameTextField hasText]) {
+        self.nameTextField.text = [contact fullName];
+        self.namePlaceholder.hidden = YES;
+        [%c(JumpingLabels) performDidBeginEditingAnimationWithField:self.nameTextField
+                                                   placeholderLabel:self.namePlaceholder
+                                                         titleLabel:self.nameTitle
+                                                         completion:nil];
+    }
+
+    self.searchTextField.text = [contact fullName];
     self.phoneNumberTextField.text = contact.number;
     self.phoneNumberTextField.hidden = NO;
     [self.contactsContainerView removeFromSuperview];
@@ -559,7 +568,7 @@ NSArray *updateSuggestionsFromText(NSString *text) {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
     SwishContact *contact = self.suggestions[indexPath.row];
-    self.payeeView.searchTextField.text = [NSString stringWithFormat:@"%@ %@", contact.firstName, contact.lastName];
+    self.payeeView.searchTextField.text = [contact fullName];
     self.payeeView.textField.text = contact.number;
     self.payeeView.textField.hidden = NO;
     [self.contactsContainerView removeFromSuperview];
