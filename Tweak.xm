@@ -7,9 +7,8 @@
 
 UIView *findLastSeparatorViewInView(UIView *view) {
     for (UIView *v in [view.subviews reverseObjectEnumerator]) {
-        if (v.frame.size.height == 1.0f) {
+        if (v.frame.size.height == 1.0f)
             return v;
-        }
     }
     return nil;
 }
@@ -166,11 +165,10 @@ NSArray *updateSuggestionsFromText(NSString *text) {
 }
 
 - (void)KbdNext:(id)button {
-    if (self.searchTextField.hidden) {
+    if (self.searchTextField.hidden)
         [self.phoneNumberTextField becomeFirstResponder];
-    } else {
+    else
         [self.searchTextField becomeFirstResponder];
-    }
 }
 
 /* Text detection */
@@ -326,19 +324,17 @@ NSArray *updateSuggestionsFromText(NSString *text) {
 - (void)layoutSubviews {
     %orig;
 
-    if (self.searchTextField) {
+    if (self.searchTextField)
         return;
-    }
 
     self.searchTextField = createSearchTextField(self.textField);
     [[((PaymentsVC *)self.searchTextField.delegate) getKeybPanel] addTextField:self.searchTextField];
     [self addSubview:self.searchTextField];
 
-    if (![self.textField hasText]) {
+    if (![self.textField hasText])
         self.textField.hidden = YES;
-    } else {
+    else
         self.searchTextField.hidden = YES;
-    }
 }
 
 %end
@@ -528,18 +524,16 @@ NSArray *updateSuggestionsFromText(NSString *text) {
 - (void)textViewDidBeginEditing:(UITextField *)textView {
     [self getKeybPanel].switchButton.hidden = YES;
 
-    if (![self.previousSelectedTextField hasText]) {
+    if (![self.previousSelectedTextField hasText])
         self.payeeView.placeHolderLabel.hidden = NO;
-    }
 
     %orig;
 }
 
 // Do not unhide the placeholder label when going back from the message view
 - (void)textViewDidEndEditing:(UITextField *)textView {
-    if (textView.text.length == 0) {
+    if (textView.text.length == 0)
         self.messageView.placeHolderLabel.hidden = NO;
-    }
 }
 
 // Prevent number placeholder label from being unhidden
@@ -553,9 +547,8 @@ NSArray *updateSuggestionsFromText(NSString *text) {
     static NSString *cellIdentifier = @"Cell";
 
     SwishContactTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellIdentifier];
-    if (cell == nil) {
+    if (cell == nil)
         cell = [[SwishContactTableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cellIdentifier];
-    }
 
     SwishContact *contact = self.suggestions[indexPath.row];
     [cell configureWithContact:contact];
@@ -615,9 +608,8 @@ NSArray *updateSuggestionsFromText(NSString *text) {
     CNContactStore *store = [[CNContactStore alloc] init];
     if ([CNContactStore authorizationStatusForEntityType:entityType] == CNAuthorizationStatusNotDetermined) {
         [store requestAccessForEntityType:entityType completionHandler:^void(BOOL granted, NSError *_Nullable error) {
-            if (granted) {
+            if (granted)
                 [self getAllContactsWithStore:store];
-            }
         }];
     } else if ([CNContactStore authorizationStatusForEntityType:entityType] == CNAuthorizationStatusAuthorized) {
         [self getAllContactsWithStore:store];
@@ -630,11 +622,10 @@ NSArray *updateSuggestionsFromText(NSString *text) {
     CNContactFetchRequest *request = [[CNContactFetchRequest alloc] initWithKeysToFetch:keys];
     NSError *error;
     [store enumerateContactsWithFetchRequest:request error:&error usingBlock:^(CNContact *__nonnull contact, BOOL *__nonnull stop) {
-        if (error) {
+        if (error)
             HBLogError(@"error fetching contacts %@", error);
-        } else {
+        else
             [self parseContactWithContact:contact];
-        }
     }];
 }
 
